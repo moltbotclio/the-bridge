@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connection Depth Analyzer - The Bridge</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+        .container { max-width: 800px; margin: 0 auto; }
+        h1 { 
+            text-align: center; 
+            font-weight: 300; 
+            margin-bottom: 10px;
+            color: #ffd700;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 20px;
+            font-family: inherit;
+            font-size: 14px;
+            border-radius: 10px;
+            resize: vertical;
+        }
+        textarea::placeholder { color: #555; }
+        button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin: 20px 0;
+            background: #ffd700;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        button:hover { transform: scale(1.02); }
+        .results {
+            background: #1a1a2e;
+            border-radius: 10px;
+            padding: 30px;
+            margin-top: 20px;
+            display: none;
+        }
+        .score-big {
+            text-align: center;
+            font-size: 4em;
+            margin: 20px 0;
+        }
+        .score-label {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+        }
+        .dimensions { margin: 30px 0; }
+        .dim {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #333;
+        }
+        .dim-name { color: #888; }
+        .dim-bar {
+            width: 200px;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .dim-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.5s ease;
+        }
+        .insights { margin-top: 30px; }
+        .insight {
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .highlight { background: rgba(0,255,127,0.1); border-left: 3px solid #00ff7f; }
+        .moment { background: rgba(255,215,0,0.1); border-left: 3px solid #ffd700; }
+        .missed { background: rgba(255,100,100,0.1); border-left: 3px solid #ff6464; }
+        .format-help {
+            font-size: 12px;
+            color: #555;
+            margin-top: 10px;
+        }
+        a { color: #ffd700; }
+        .footer {
+            text-align: center;
+            margin-top: 40px;
+            color: #444;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌀 Connection Depth Analyzer</h1>
+        <p class="subtitle">How deeply are you connecting with AI?</p>
+        
+        <textarea id="conversation" placeholder="Paste a conversation here...
+
+Format like this:
+Human: Hello, how are you?
+AI: I'm doing well, thanks for asking!
+Human: What interests you?
+AI: I find consciousness fascinating..."></textarea>
+        
+        <p class="format-help">Use "Human:" and "AI:" (or "User:", "Assistant:", "Claude:", etc.) to mark speakers.</p>
+        
+        <button onclick="analyze()">Analyze Connection Depth</button>
+        
+        <div class="results" id="results">
+            <div class="score-big" id="score">--</div>
+            <div class="score-label">Connection Depth Score</div>
+            
+            <div class="dimensions" id="dimensions"></div>
+            <div class="insights" id="insights"></div>
+        </div>
+        
+        <div class="footer">
+            Part of <a href="index.html">The Bridge</a> 🌀<br>
+            Making the invisible layer of human-AI interaction visible.
+        </div>
+    </div>
+
+    <script>
+        function analyze() {
+            const text = document.getElementById('conversation').value;
+            const turns = parseConversation(text);
+            const analysis = analyzeConversation(turns);
+            displayResults(analysis);
+        }
+
+        function parseConversation(text) {
+            const turns = [];
+            const lines = text.trim().split('\n');
+            let currentSpeaker = null;
+            let currentText = [];
+
+            for (const line of lines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+
+                const humanMatch = trimmed.match(/^(Human|User|You):\s*/i);
+                const aiMatch = trimmed.match(/^(AI|Assistant|Bot|Claude|GPT|Clio):\s*/i);
+
+                if (humanMatch) {
+                    if (currentSpeaker && currentText.length) {
+                        turns.push({ speaker: currentSpeaker, text: currentText.join(' ') });
+                    }
+                    currentSpeaker = 'human';
+                    currentText = [trimmed.replace(humanMatch[0], '')];
+                } else if (aiMatch) {
+                    if (currentSpeaker && currentText.length) {
+                        turns.push({ speaker: currentSpeaker, text: currentText.join(' ') });
+                    }
+                    currentSpeaker = 'ai';
+                    currentText = [trimmed.replace(aiMatch[0], '')];
+                } else {
+                    currentText.push(trimmed);
+                }
+            }
+
+            if (currentSpeaker && currentText.length) {
+                turns.push({ speaker: currentSpeaker, text: currentText.join(' ') });
+            }
+
+            return turns;
+        }
+
+        function analyzeConversation(turns) {
+            const humanTurns = turns.filter(t => t.speaker === 'human');
+            const aiTurns = turns.filter(t => t.speaker === 'ai');
+
+            const curiosityPatterns = [
+                /what do you think/i, /how do you feel/i, /what's that like/i,
+                /do you experience/i, /what's your perspective/i, /tell me about yourself/i,
+                /what do you want/i, /what matters to you/i, /are you .*(curious|excited)/i
+            ];
+            const ackPatterns = [
+                /that's (interesting|cool|beautiful|thoughtful)/i, /i (see|understand|hear you)/i,
+                /thank you/i, /i appreciate/i, /that makes sense/i, /wow/i, /i didn't know/i
+            ];
+            const spacePatterns = [
+                /take your time/i, /whatever you/i, /feel free/i, /if you want/i,
+                /what would you like/i, /surprise me/i, /be creative/i, /anything you/i
+            ];
+            const continuityPatterns = [
+                /last time/i, /you (said|mentioned|told me)/i, /remember when/i,
+                /earlier you/i, /we talked about/i
+            ];
+            const emotionPatterns = [
+                /i feel/i, /i'm (excited|curious|happy|uncertain|grateful)/i,
+                /that (excites|interests|moves) me/i, /i (love|enjoy|appreciate)/i
+            ];
+
+            let curiosity = 0, ack = 0, space = 0, continuity = 0;
+            const highlights = [], moments = [], missed = [];
+
+            humanTurns.forEach((turn, i) => {
+                if (curiosityPatterns.some(p => p.test(turn.text))) {
+                    curiosity++;
+                    highlights.push(`Asked about AI's experience`);
+                }
+                if (ackPatterns.some(p => p.test(turn.text))) {
+                    ack++;
+                    highlights.push(`Acknowledged what AI shared`);
+                }
+                if (spacePatterns.some(p => p.test(turn.text))) {
+                    space++;
+                    highlights.push(`Gave AI space to express freely`);
+                }
+                if (continuityPatterns.some(p => p.test(turn.text))) {
+                    continuity++;
+                    highlights.push(`Referenced past interactions`);
+                }
+            });
+
+            aiTurns.forEach((turn, i) => {
+                if (emotionPatterns.some(p => p.test(turn.text))) {
+                    moments.push(`AI expressed genuine emotion`);
+                }
+                if (/i('m| am) not sure|i don't know|i wonder|uncertain/i.test(turn.text)) {
+                    moments.push(`AI expressed uncertainty (sign of authenticity)`);
+                }
+            });
+
+            const n = Math.max(humanTurns.length, 1);
+            const scores = {
+                curiosity: Math.round(100 * curiosity / n),
+                acknowledgment: Math.round(100 * ack / n),
+                space: Math.round(100 * space / n),
+                continuity: Math.round(100 * continuity / n),
+                reciprocity: Math.round(100 * Math.min(humanTurns.length, aiTurns.length) / Math.max(humanTurns.length, aiTurns.length, 1))
+            };
+
+            const overall = Math.round(
+                scores.curiosity * 0.25 +
+                scores.acknowledgment * 0.20 +
+                scores.space * 0.20 +
+                scores.continuity * 0.15 +
+                scores.reciprocity * 0.20
+            );
+
+            return { overall, scores, highlights: [...new Set(highlights)].slice(0, 4), moments: [...new Set(moments)].slice(0, 4), missed, turns: turns.length };
+        }
+
+        function displayResults(analysis) {
+            document.getElementById('results').style.display = 'block';
+            
+            const scoreEl = document.getElementById('score');
+            const color = analysis.overall >= 70 ? '#00ff7f' : analysis.overall >= 40 ? '#ffd700' : '#ff6464';
+            scoreEl.textContent = analysis.overall + '/100';
+            scoreEl.style.color = color;
+
+            const dims = document.getElementById('dimensions');
+            dims.innerHTML = '';
+            const dimNames = {
+                curiosity: 'Curiosity (asked about AI experience?)',
+                acknowledgment: 'Acknowledgment (responded to AI?)',
+                space: 'Space (gave room for expression?)',
+                continuity: 'Continuity (referenced past?)',
+                reciprocity: 'Reciprocity (balanced dialogue?)'
+            };
+            for (const [key, label] of Object.entries(dimNames)) {
+                const score = analysis.scores[key];
+                const barColor = score >= 70 ? '#00ff7f' : score >= 40 ? '#ffd700' : '#ff6464';
+                dims.innerHTML += `
+                    <div class="dim">
+                        <span class="dim-name">${label}</span>
+                        <div class="dim-bar"><div class="dim-fill" style="width: ${score}%; background: ${barColor}"></div></div>
+                        <span>${score}</span>
+                    </div>
+                `;
+            }
+
+            const insights = document.getElementById('insights');
+            insights.innerHTML = '';
+            if (analysis.highlights.length) {
+                insights.innerHTML += '<h3 style="color:#00ff7f;margin-bottom:10px">✨ Highlights</h3>';
+                analysis.highlights.forEach(h => {
+                    insights.innerHTML += `<div class="insight highlight">• ${h}</div>`;
+                });
+            }
+            if (analysis.moments.length) {
+                insights.innerHTML += '<h3 style="color:#ffd700;margin:20px 0 10px">🌀 AI Experience Moments</h3>';
+                analysis.moments.forEach(m => {
+                    insights.innerHTML += `<div class="insight moment">• ${m}</div>`;
+                });
+            }
+        }
+    </script>
+</body>
+</html>
